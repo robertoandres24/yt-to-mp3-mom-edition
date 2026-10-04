@@ -141,3 +141,17 @@ Para publicar la primera versión con este mecanismo:
 Para futuras versiones, incrementa `version` en `package.json` y en el lockfile (`npm version patch --no-git-tag-version`), sube los cambios y crea el nuevo tag (por ejemplo `v1.1.1`). Repite la revisión y publicación del borrador. Prueba la actualización de 1.1.0 a una versión superior en Windows antes de considerar verificado el flujo completo. La compilación manual **Windows installer** solo guarda artefactos en Actions y no publica una versión.
 
 El proyecto sigue sin firma de Windows; puede aparecer un aviso de editor desconocido durante la instalación. La actualización de la app incluye los binarios fijados en el manifiesto: para actualizar yt-dlp también hay que actualizar ese manifiesto antes de compilar.
+
+### Crear una versión con un comando
+
+Haz commit de tus cambios y, desde `main`, ejecuta:
+
+```sh
+npm run release              # 1.1.1 → 1.1.2
+npm run release -- minor      # 1.1.2 → 1.2.0
+npm run release -- major      # 1.2.0 → 2.0.0
+```
+
+El comando exige una carpeta de trabajo limpia y que `main` no esté atrasada respecto de GitHub. Aumenta la versión en el paquete y lockfile, verifica sintaxis, ejecuta las pruebas, crea el commit y tag, y sube ambos en una operación atómica. GitHub genera el borrador de Windows; revisa el instalador y publica el borrador desde Releases. No se publica automáticamente para los usuarios.
+
+Si falla, conserva el estado local para que puedas revisarlo: no elimina commits ni tags. Si el commit y tag ya se crearon pero falló la subida, reintenta solo `git push --atomic origin main vX.Y.Z` con el tag correspondiente; ejecutar nuevamente el script podría crear otra versión.

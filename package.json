@@ -16,7 +16,8 @@
     "binaries:win": "node scripts/binaries.js win",
     "build:mac": "npm run binaries:mac && npm run check && electron-builder --mac --arm64",
     "build:mac:intel": "node scripts/binaries.js mac x64 && npm run check && electron-builder --mac --x64",
-    "build:win": "npm run binaries:win && npm run check && electron-builder --win --x64"
+    "build:win": "npm run binaries:win && npm run check && electron-builder --win --x64",
+    "release": "node scripts/release.js"
   },
   "dependencies": {
     "electron-updater": "6.8.9",
