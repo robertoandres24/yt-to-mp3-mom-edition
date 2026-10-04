@@ -43,10 +43,12 @@ api.onUpdate(update => {
     $('url').value = '';
     $('clear-url').hidden = true;
   }
+  if (update.state === 'error') { $('error-details').hidden = false; $('error-detail').textContent = update.detail || update.message; }
   if (['error', 'cancelled'].includes(update.state)) $('progress-container').hidden = true;
 });
 $('form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy) return;
+  $('error-details').hidden = true; $('error-details').open = false; $('error-detail').textContent = '';
   setBusy(true); $('message').classList.remove('error'); $('message').textContent = 'Preparando el video…'; $('filename').textContent = ''; lastProgress = 0; showProgress(null);
   try {
     const result = await api.download($('url').value);
@@ -73,3 +75,8 @@ async function refreshDestination() {
 }
 window.addEventListener('focus', refreshDestination);
 refreshDestination();
+
+$('open-logs').addEventListener('click', async () => {
+  try { const result = await api.openErrorLogs(); if (!result.ok) showError(result.error); }
+  catch { showError('No se pudo abrir la carpeta de registros.'); }
+});

@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { DownloadManager, friendlyError } = require('./core');
+const { writeErrorLog } = require('./error-log');
 const { defaultDestination } = require('./destination');
 
 let window, manager, destination, userSelected = false, closing = false;
@@ -13,7 +14,8 @@ else {
   app.whenReady().then(async () => {
     destination = await defaultDestination(app.getPath('downloads'));
     const bin = app.isPackaged ? path.join(process.resourcesPath, 'bin') : path.join(__dirname, '..', 'resources', 'bin', process.platform === 'win32' ? 'win' : `mac-${process.arch}`);
-    manager = new DownloadManager({ bin, cacheDir: path.join(app.getPath('userData'), 'yt-dlp-cache'), emit: update => { if (window && !window.isDestroyed()) window.webContents.send('download:update', update); } });
+    const errorLog = path.join(app.getPath('userData'), 'logs', 'download-errors.jsonl');
+    manager = new DownloadManager({ logError: diagnostic => writeErrorLog(errorLog, { appVersion: app.getVersion(), platform: process.platform, arch: process.arch, ...diagnostic }), bin, cacheDir: path.join(app.getPath('userData'), 'yt-dlp-cache'), emit: update => { if (window && !window.isDestroyed()) window.webContents.send('download:update', update); } });
     const handle = (channel, fn) => ipcMain.handle(channel, async (event, ...args) => {
       if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== rendererUrl) return { ok: false, error: 'Solicitud no permitida.' };
       try { return await fn(...args); } catch (error) { return { ok: false, error: error.code ? friendlyError(`${error.code} ${error.message}`) : error.message }; }
@@ -34,6 +36,10 @@ else {
       return { ...result, destination: destination.path };
     });
     handle('download:cancel', async () => { await manager.cancel(); return { ok: true }; });
+    handle('errors:open', async () => {
+      const error = await shell.openPath(path.dirname(errorLog));
+      return error ? { ok: false, error: 'No se pudo abrir la carpeta de registros.' } : { ok: true };
+    });
     handle('destination:open', async () => {
       const error = await shell.openPath(destination.path);
       return error ? { ok: false, error: 'No se pudo abrir la carpeta. Revisa que el pendrive siga conectado.' } : { ok: true };

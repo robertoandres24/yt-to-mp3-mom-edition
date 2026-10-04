@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('youtubeMP3', {
   chooseDestination: () => ipcRenderer.invoke('destination:choose'),
   download: url => ipcRenderer.invoke('download:start', url),
   cancel: () => ipcRenderer.invoke('download:cancel'),
+  openErrorLogs: () => ipcRenderer.invoke('errors:open'),
   openFolder: () => ipcRenderer.invoke('destination:open'),
   onUpdate: callback => {
     const listener = (_event, update) => callback(update);

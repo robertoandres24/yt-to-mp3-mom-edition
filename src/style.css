@@ -34,3 +34,6 @@ progress::-webkit-progress-value { background: #176b50; border-radius: 6px; tran
 footer { border-top: 1px solid #dce0da; margin-top: 25px; padding-top: 18px; font-size: 12px; color: #6b746e; line-height: 1.5; }
 [hidden] { display: none !important; }
 .error { color: #a02b24; }
+
+#error-detail { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; font-size: 12px; }
+#error-details { margin: 12px 0; }

@@ -30,6 +30,11 @@
         <progress id="progress" max="100" value="0" aria-label="Progreso de descarga"></progress>
         <span id="progress-percent" aria-hidden="true">0%</span>
       </div>
+      <details id="error-details" hidden>
+        <summary>Ver detalle del error</summary>
+        <pre id="error-detail"></pre>
+        <button id="open-logs" type="button" class="secondary">Abrir registros</button>
+      </details>
       <p id="filename" class="filename"></p>
     </section>
     <div class="actions">

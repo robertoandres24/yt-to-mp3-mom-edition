@@ -20,13 +20,22 @@ function validateUrl(input) {
   return `https://www.youtube.com/watch?v=${id}`;
 }
 
-function friendlyError(detail) {
+function friendlyError(detail, { phase, code } = {}) {
+  // A tool's stderr can mention missing remote files; only structured filesystem
+  // errors in local operations should point users to their destination.
   if (/ENOSPC|no space left|disk full/i.test(detail)) return 'No hay espacio suficiente en la carpeta de destino.';
+  if (phase === 'components' || phase === 'launch') return 'No se pudo iniciar una herramienta de la app. Reinstala la aplicación y revisa el detalle del error.';
+  if (['destination', 'saving'].includes(phase) && ['ENOENT', 'ENODEV'].includes(code)) return 'La carpeta de destino ya no está disponible. Revisa que el pendrive siga conectado o elige otra carpeta.';
   if (/EACCES|EPERM|permission denied|access is denied|read-only/i.test(detail)) return 'No se puede escribir en esa carpeta. Elige otra carpeta.';
-  if (/ENOENT|no such file|device not ready/i.test(detail)) return 'No se encuentra el destino o un componente de la app. Reconecta el pendrive o reinstala la aplicación.';
-  if (/private|unavailable|removed|not available|age.restricted|sign in|confirm.*bot|403/i.test(detail)) return 'YouTube no permite descargar este video. Prueba con otro video público.';
+  if (/requested format.*not available|no (?:video |audio )?formats|only images are available/i.test(detail)) return 'YouTube no entregó una pista de audio descargable para este video. Revisa el detalle del error.';
+  if (/confirm.*bot|sign in|login required|age.restricted/i.test(detail)) return 'YouTube pide iniciar sesión o verificar el acceso a este video.';
+  if (/private|video unavailable|removed|not available in your country|geo.restricted/i.test(detail)) return 'YouTube no permite acceder a este video: puede ser privado, estar eliminado o tener una restricción regional.';
+  if (/403|forbidden|429|too many requests/i.test(detail)) return 'YouTube rechazó la descarga. Puede ser una restricción del video o un bloqueo temporal.';
   if (/network|timed out|resolve|connection|unable to download/i.test(detail)) return 'No se pudo conectar con YouTube. Revisa tu conexión e intenta nuevamente.';
-  return 'No se pudo descargar el audio. Prueba con otro video o elige otra carpeta.';
+  if (phase === 'conversion' || /postprocessing|ffmpeg|ffprobe/i.test(detail)) return 'No se pudo convertir el audio a MP3. Revisa el detalle del error.';
+  if (phase === 'saving') return 'No se pudo guardar el MP3 en la carpeta de destino. Revisa el detalle del error.';
+  if (phase === 'destination') return 'No se pudo preparar la carpeta de destino. Elige otra carpeta y revisa el detalle del error.';
+  return 'No se pudo descargar el audio de este video. Revisa el detalle del error.';
 }
 
 function makeArgs(url, stage, bin, { cacheDir } = {}) {
@@ -72,8 +81,8 @@ async function killTree(child, platform = process.platform) {
 }
 
 class DownloadManager {
-  constructor({ bin, emit, cacheDir, spawnProcess = spawn, killProcess = killTree }) {
-    this.bin = bin; this.emit = emit; this.cacheDir = cacheDir; this.spawnProcess = spawnProcess; this.killProcess = killProcess; this.active = null;
+  constructor({ bin, emit, cacheDir, logError = async () => {}, spawnProcess = spawn, killProcess = killTree }) {
+    this.logError = logError; this.bin = bin; this.emit = emit; this.cacheDir = cacheDir; this.spawnProcess = spawnProcess; this.killProcess = killProcess; this.active = null;
   }
   async start(input, destination) {
     if (this.active) throw new Error('Ya hay una descarga en curso. Espera o cancélala.');
@@ -85,26 +94,30 @@ class DownloadManager {
     return { ok: true };
   }
   async run(job, url, destination) {
-    let detail = '', resultFile = null, killPromise;
+    let detail = '', stdout = '', resultFile = null, killPromise, exitCode = null, phase = 'destination';
     try {
       await fs.access(destination, require('node:fs').constants.W_OK);
       if (job.cancelled) return;
       job.stage = await fs.mkdtemp(path.join(destination, '.youtube-mp3-'));
       if (job.cancelled) return;
       const suffix = process.platform === 'win32' ? '.exe' : '';
+      phase = 'components';
       for (const name of ['yt-dlp', 'ffmpeg', 'ffprobe', 'deno']) await fs.access(path.join(this.bin, name + suffix));
       if (job.cancelled) return;
       this.emit({ state: 'downloading', progress: null, message: 'Preparando el video…' });
+      phase = 'launch';
       const child = this.spawnProcess(path.join(this.bin, 'yt-dlp' + suffix), makeArgs(url, job.stage, this.bin, { cacheDir: this.cacheDir }), {
         shell: false, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'],
         env: { ...process.env, PYTHONUNBUFFERED: '1' }
       });
       job.child = child;
+      phase = 'download';
       const buffers = { stdout: '', stderr: '' };
       let lastProgress = 0;
       const parse = line => {
         const update = parseProgress(line);
         if (update && !job.cancelled) {
+          if (update.message === 'Convirtiendo a MP3…') phase = 'conversion';
           if (update.progress !== null) { lastProgress = Math.max(lastProgress, update.progress); update.progress = lastProgress; }
           this.emit(update);
         }
@@ -115,7 +128,7 @@ class DownloadManager {
         const lines = buffers[stream].split(/\r?\n/); buffers[stream] = lines.pop(); lines.forEach(parse);
         if (buffers[stream].length > 65536) buffers[stream] = '';
       };
-      child.stdout.on('data', chunk => read('stdout', chunk));
+      child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-12000); read('stdout', chunk); });
       // Read both streams; custom progress normally arrives on stdout.
       child.stderr.on('data', chunk => {
         detail = (detail + chunk.toString()).slice(-12000);
@@ -124,15 +137,18 @@ class DownloadManager {
       const code = await new Promise((resolve, reject) => {
         child.once('error', reject); child.once('close', resolve);
       });
+      exitCode = code;
       Object.values(buffers).filter(Boolean).forEach(parse);
       if (job.cancelled) return;
       if (code !== 0) throw new Error(detail);
+      phase = 'conversion';
       if (!resultFile || path.dirname(path.resolve(resultFile)) !== path.resolve(job.stage) || path.extname(resultFile).toLowerCase() !== '.mp3') throw new Error('No MP3 output');
       const stat = await fs.stat(resultFile);
       if (!stat.isFile() || stat.size === 0) throw new Error('Empty MP3');
       // Exclusive copies preserve existing files, even when the same video is downloaded twice.
       const stem = path.basename(resultFile, '.mp3');
       let saved;
+      phase = 'saving';
       job.committing = true;
       for (let i = 0; i < 1000; i++) {
         saved = path.join(destination, `${stem}${i ? ` (${i})` : ''}.mp3`);
@@ -141,8 +157,16 @@ class DownloadManager {
       }
       this.emit({ state: 'completed', progress: 100, message: 'Descarga terminada', filename: path.basename(saved) });
     } catch (error) {
+      if (error.syscall?.startsWith('spawn')) phase = 'launch';
       if (job.child && job.child.exitCode === null && job.child.signalCode === null) killPromise = this.killProcess(job.child);
-      if (!job.cancelled) this.emit({ state: 'error', message: friendlyError(`${error.code || ''} ${error.message} ${detail}`) });
+      if (!job.cancelled) {
+        const diagnostic = { timestamp: new Date().toISOString(), url, destination, phase,
+          code: error.code || null, exitCode, message: error.message, stdout, stderr: detail };
+        let logged = false;
+        try { logged = await this.logError(diagnostic); } catch {}
+        this.emit({ state: 'error', message: friendlyError(`${error.code || ''} ${error.message} ${detail}`, { phase, code: error.code }),
+          detail: `Etapa: ${phase}\nCódigo: ${error.code || exitCode || 'sin código'}\n${detail || error.message}\n${logged ? 'Diagnóstico guardado en el registro local.' : 'No se pudo guardar el registro local.'}` });
+      }
     } finally {
       await killPromise;
       await job.killPromise;

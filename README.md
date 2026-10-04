@@ -118,3 +118,9 @@ Se incluye Deno porque el soporte actual de YouTube en yt-dlp necesita resolver 
 YouTube puede cambiar o restringir ciertos videos. Los videos privados, protegidos, con restricción de edad o que exijan autenticación pueden fallar. Este MVP no pide cookies ni credenciales ni intenta evadir esas restricciones. Para actualizar, revisa nuevas versiones y digests en el manifiesto, vuelve a preparar los binarios y recompila; no hay autoactualizaciones.
 
 Consulta `THIRD-PARTY-NOTICES.md` y los archivos LICENSE/README de los binarios antes de redistribuir. Algunos builds de FFmpeg para Mac incluyen componentes `nonfree`; estos paquetes se preparan para prueba personal, y se deben sustituir por builds redistribuibles antes de publicar instaladores para terceros.
+
+## Diagnóstico de errores
+
+Los fallos distinguen preparación del destino, herramientas de la app, descarga, conversión y guardado. **Ver detalle del error** muestra la etapa, código y salida técnica; **Abrir registros** abre la carpeta de diagnóstico local. Se guardan fecha, versión de la app, plataforma, enlace normalizado del video, destino, etapa, código de salida y los últimos 12.000 caracteres de cada salida de yt-dlp. Los registros no se envían a ningún servidor; pueden contener rutas personales y enlaces de videos.
+
+El archivo `logs/download-errors.jsonl` está dentro de la carpeta de datos de usuario de Electron. Rota al alcanzar 1 MB y conserva un archivo anterior. Si no puede escribirse, el detalle sigue disponible en pantalla. Cancelar una descarga no se registra como fallo.

@@ -109,3 +109,37 @@ test('killTree termina un grupo de procesos real en macOS/Linux', { skip: proces
   await killTree(child); await closed;
   assert.ok(child.signalCode);
 });
+
+test('no confunde archivos ausentes en stderr con un pendrive desconectado', () => {
+  const message = friendlyError('ERROR: unable to download video: No such file or directory', { phase: 'download' });
+  assert.doesNotMatch(message, /pendrive|reinstala|destino/);
+  assert.match(friendlyError('ENOENT', { phase: 'destination', code: 'ENOENT' }), /pendrive/);
+  assert.match(friendlyError('ENOENT', { phase: 'components', code: 'ENOENT' }), /herramienta/);
+  assert.match(friendlyError('Requested format is not available', { phase: 'download' }), /pista de audio/);
+  assert.match(friendlyError('Postprocessing: No such file or directory', { phase: 'conversion' }), /convertir/);
+  assert.match(friendlyError('Sign in to confirm you are not a bot', { phase: 'download' }), /iniciar sesión/);
+});
+test('conserva diagnóstico técnico y el error sigue visible si falla el registro', async t => {
+  const { manager, dest, updates } = await fixture(t, 'error');
+  let diagnostic;
+  manager.logError = async data => { diagnostic = data; throw new Error('log unavailable'); };
+  await manager.start('https://youtu.be/abcdefghijk', dest); await manager.active.done;
+  assert.equal(diagnostic.phase, 'download');
+  assert.equal(diagnostic.exitCode, 1);
+  assert.equal(diagnostic.stderr, 'connection timed out');
+  assert.equal(diagnostic.url, 'https://www.youtube.com/watch?v=abcdefghijk');
+  assert.match(updates.find(update => update.state === 'error').detail, /connection timed out/);
+  assert.equal(manager.active, null);
+});
+test('registro persistente conserva errores y rota al alcanzar el límite', async t => {
+  const { writeErrorLog } = require('../src/error-log');
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'yt-log-test-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const file = path.join(root, 'logs', 'errors.jsonl');
+  await writeErrorLog(file, { message: 'first' });
+  assert.equal(JSON.parse((await fs.readFile(file, 'utf8')).trim()).message, 'first');
+  await fs.writeFile(file, 'x'.repeat(1024 * 1024));
+  await writeErrorLog(file, { message: 'second' });
+  assert.equal((await fs.stat(file + '.previous')).size, 1024 * 1024);
+  assert.equal(JSON.parse((await fs.readFile(file, 'utf8')).trim()).message, 'second');
+});
