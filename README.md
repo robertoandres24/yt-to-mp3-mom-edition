@@ -11,6 +11,8 @@ Aplicación de escritorio sencilla para guardar el audio de **un video de YouTub
 
 Puedes cancelar. Solo se permite una descarga a la vez. Cerrar la aplicación durante una descarga detiene también sus procesos hijos y limpia los temporales. Los MP3 existentes se conservan; una descarga repetida recibe un sufijo numérico. La carpeta elegida manualmente se respeta durante la sesión. La detección USB se actualiza al enfocar la ventana y al iniciar otra descarga. Si se retira el pendrive durante una descarga, se muestra un error y no se cambia silenciosamente el destino.
 
+Durante **Preparando el video…** no se muestra un porcentaje, porque YouTube todavía no ha entregado el audio. La barra refleja los bytes descargados o los fragmentos completados cuando comienza la transferencia; si el total no está disponible, se muestra la cantidad descargada en MB. Los porcentajes no retroceden cuando cambia una estimación. Durante la conversión se mantiene en 99% y llega a 100% al guardar el MP3. Con videos pequeños o conexiones rápidas, la preparación puede durar más que la descarga y el porcentaje avanzar muy rápido.
+
 ## Desarrollo
 
 Requisitos del **desarrollador**: Node.js 24 LTS, npm y acceso a npm/GitHub para descargar dependencias y binarios. El usuario final no instala Node, Python, yt-dlp, FFmpeg ni Deno.
@@ -27,7 +29,7 @@ npm start
 npm run check                 # sintaxis JS
 npm test                      # validación, procesos, errores, cancelación y archivos
 npm run test:smoke            # abre Electron y prueba preload/IPC/aislamiento; después cierra
-npm run test:tools            # convierte un audio generado localmente con los binarios reales
+npm run test:tools            # descargas lentas reales (directa y HLS), progreso en vivo y conversión MP3
 npm run test:packaged         # comprueba la .app generada por build:mac
 ```
 

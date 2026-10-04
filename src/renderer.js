@@ -1,6 +1,7 @@
 const api = window.youtubeMP3;
 const $ = id => document.getElementById(id);
 let busy = false;
+let lastProgress = 0;
 function setBusy(value) {
   busy = value;
   ['url', 'download', 'choose', 'open'].forEach(id => { $(id).disabled = value; });
@@ -8,6 +9,14 @@ function setBusy(value) {
   $('cancel').disabled = false;
 }
 function showError(message) { $('message').textContent = message; $('message').classList.add('error'); }
+function showProgress(value) {
+  const known = Number.isFinite(value);
+  const percent = known ? Math.min(100, Math.max(0, value)) : lastProgress;
+  lastProgress = percent;
+  $('progress-container').hidden = false;
+  $('progress').value = percent;
+  $('progress-percent').textContent = known || percent > 0 ? `${Math.floor(percent)}%` : '—';
+}
 function showDestination(result) {
   if (!result.ok) return showError(result.error);
   $('folder').textContent = result.path;
@@ -19,21 +28,19 @@ api.onUpdate(update => {
   $('message').classList.toggle('error', update.state === 'error');
   if (update.message) $('message').textContent = update.message;
   if (update.state === 'downloading') {
-    $('progress').hidden = false;
-    if (update.progress === 0) $('progress').removeAttribute('value');
-    else $('progress').value = update.progress;
+    showProgress(update.progress);
   }
-  if (update.state === 'completed') { $('progress').value = 100; $('filename').textContent = update.filename; }
-  if (['error', 'cancelled'].includes(update.state)) $('progress').hidden = true;
+  if (update.state === 'completed') { showProgress(100); $('filename').textContent = update.filename; }
+  if (['error', 'cancelled'].includes(update.state)) $('progress-container').hidden = true;
 });
 $('form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy) return;
-  setBusy(true); $('message').classList.remove('error'); $('message').textContent = 'Preparando descarga…'; $('filename').textContent = ''; $('progress').hidden = true;
+  setBusy(true); $('message').classList.remove('error'); $('message').textContent = 'Preparando el video…'; $('filename').textContent = ''; lastProgress = 0; showProgress(null);
   try {
     const result = await api.download($('url').value);
-    if (!result.ok) { setBusy(false); showError(result.error); }
+    if (!result.ok) { setBusy(false); $('progress-container').hidden = true; showError(result.error); }
     else { $('folder').textContent = result.destination; $('folder').title = result.destination; }
-  } catch { setBusy(false); showError('No se pudo iniciar la descarga. Intenta nuevamente.'); }
+  } catch { setBusy(false); $('progress-container').hidden = true; showError('No se pudo iniciar la descarga. Intenta nuevamente.'); }
 });
 $('choose').addEventListener('click', async () => {
   $('choose').disabled = true;

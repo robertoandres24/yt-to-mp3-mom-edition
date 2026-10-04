@@ -23,7 +23,10 @@
     </form>
     <section class="status" aria-live="polite" aria-atomic="true">
       <p id="message">Pega un enlace para comenzar.</p>
-      <progress id="progress" max="100" value="0" hidden aria-label="Progreso de descarga"></progress>
+      <div id="progress-container" class="progress-row" hidden>
+        <progress id="progress" max="100" value="0" aria-label="Progreso de descarga"></progress>
+        <span id="progress-percent" aria-hidden="true">0%</span>
+      </div>
       <p id="filename" class="filename"></p>
     </section>
     <div class="actions">

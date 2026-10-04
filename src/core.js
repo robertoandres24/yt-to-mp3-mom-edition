@@ -32,13 +32,30 @@ function friendlyError(detail) {
 function makeArgs(url, stage, bin) {
   const suffix = process.platform === 'win32' ? '.exe' : '';
   return ['--ignore-config', '--no-playlist', '--no-live-from-start', '--match-filter', '!is_live',
-    '--no-colors', '--newline', '--progress', '--no-cache-dir', '--socket-timeout', '20', '--retries', '3',
+    '--no-colors', '--newline', '--progress', '--progress-delta', '0.1', '--downloader', 'native', '--no-cache-dir', '--socket-timeout', '20', '--retries', '3',
     '--no-overwrites', '--windows-filenames', '--trim-filenames', '160',
     '--ffmpeg-location', bin, '--js-runtimes', `deno:${path.join(bin, `deno${suffix}`)}`,
     '-f', 'bestaudio/best', '-x', '--audio-format', 'mp3', '--audio-quality', '0',
     '--paths', stage, '-o', '%(title).140B [%(id)s].%(ext)s',
-    '--progress-template', 'download:PROGRESS:%(progress._percent_str)s',
+    '--progress-template', 'download:PROGRESS:%(progress)j',
     '--print', 'after_move:FILE:%(filepath)s', '--', url];
+}
+
+function parseProgress(line) {
+  if (!line.startsWith('PROGRESS:')) return null;
+  let data;
+  try { data = JSON.parse(line.slice(9)); } catch { return null; }
+  if (!data || typeof data !== 'object' || !['downloading', 'finished'].includes(data.status)) return null;
+  const positive = value => typeof value === 'number' && Number.isFinite(value) && value > 0;
+  let percent = null;
+  if (data.status === 'finished') percent = 100;
+  else if (positive(data.total_bytes) && positive(data.downloaded_bytes)) percent = 100 * data.downloaded_bytes / data.total_bytes;
+  else if (positive(data.fragment_count) && typeof data.fragment_index === 'number' && Number.isFinite(data.fragment_index)) percent = 100 * data.fragment_index / data.fragment_count;
+  else if (positive(data.total_bytes_estimate) && positive(data.downloaded_bytes)) percent = 100 * data.downloaded_bytes / data.total_bytes_estimate;
+  else if (data.downloaded_bytes === 0) percent = 0;
+  const bytes = positive(data.downloaded_bytes) ? ` (${(data.downloaded_bytes / 1048576).toFixed(1)} MB)` : '';
+  return { state: 'downloading', progress: percent === null ? null : Math.min(99, Math.max(0, percent)),
+    message: data.status === 'finished' ? 'Convirtiendo a MP3…' : `Descargando audio…${percent === null ? bytes : ''}` };
 }
 
 async function killTree(child, platform = process.platform) {
@@ -76,29 +93,37 @@ class DownloadManager {
       const suffix = process.platform === 'win32' ? '.exe' : '';
       for (const name of ['yt-dlp', 'ffmpeg', 'ffprobe', 'deno']) await fs.access(path.join(this.bin, name + suffix));
       if (job.cancelled) return;
-      this.emit({ state: 'downloading', progress: 0, message: 'Preparando descarga…' });
+      this.emit({ state: 'downloading', progress: null, message: 'Preparando el video…' });
       const child = this.spawnProcess(path.join(this.bin, 'yt-dlp' + suffix), makeArgs(url, job.stage, this.bin), {
-        shell: false, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe']
+        shell: false, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, PYTHONUNBUFFERED: '1' }
       });
       job.child = child;
-      let buffer = '';
+      const buffers = { stdout: '', stderr: '' };
+      let lastProgress = 0;
       const parse = line => {
-        if (line.startsWith('PROGRESS:')) {
-          const value = Number.parseFloat(line.slice(9));
-          if (Number.isFinite(value)) this.emit({ state: 'downloading', progress: Math.min(99, Math.max(0, value)), message: value >= 100 ? 'Convirtiendo a MP3…' : 'Descargando audio…' });
+        const update = parseProgress(line);
+        if (update && !job.cancelled) {
+          if (update.progress !== null) { lastProgress = Math.max(lastProgress, update.progress); update.progress = lastProgress; }
+          this.emit(update);
         }
         if (line.startsWith('FILE:')) resultFile = line.slice(5).trim();
       };
-      child.stdout.on('data', chunk => {
-        buffer += chunk.toString();
-        const lines = buffer.split(/\r?\n/); buffer = lines.pop(); lines.forEach(parse);
-        if (buffer.length > 65536) buffer = '';
+      const read = (stream, chunk) => {
+        buffers[stream] += chunk.toString();
+        const lines = buffers[stream].split(/\r?\n/); buffers[stream] = lines.pop(); lines.forEach(parse);
+        if (buffers[stream].length > 65536) buffers[stream] = '';
+      };
+      child.stdout.on('data', chunk => read('stdout', chunk));
+      // Read both streams; custom progress normally arrives on stdout.
+      child.stderr.on('data', chunk => {
+        detail = (detail + chunk.toString()).slice(-12000);
+        read('stderr', chunk);
       });
-      child.stderr.on('data', chunk => { detail = (detail + chunk.toString()).slice(-12000); });
       const code = await new Promise((resolve, reject) => {
         child.once('error', reject); child.once('close', resolve);
       });
-      if (buffer) parse(buffer);
+      Object.values(buffers).filter(Boolean).forEach(parse);
       if (job.cancelled) return;
       if (code !== 0) throw new Error(detail);
       if (!resultFile || path.dirname(path.resolve(resultFile)) !== path.resolve(job.stage) || path.extname(resultFile).toLowerCase() !== '.mp3') throw new Error('No MP3 output');
@@ -136,4 +161,4 @@ class DownloadManager {
   }
 }
 
-module.exports = { validateUrl, friendlyError, makeArgs, killTree, DownloadManager };
+module.exports = { validateUrl, friendlyError, makeArgs, parseProgress, killTree, DownloadManager };

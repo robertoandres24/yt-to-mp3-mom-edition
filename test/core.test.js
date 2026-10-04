@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { EventEmitter } = require('node:events');
 const { PassThrough } = require('node:stream');
-const { validateUrl, friendlyError, makeArgs, DownloadManager, killTree } = require('../src/core');
+const { validateUrl, friendlyError, makeArgs, parseProgress, DownloadManager, killTree } = require('../src/core');
 const { spawn } = require('node:child_process');
 
 test('valida hosts y un único video, elimina parámetros ajenos', () => {
@@ -42,11 +42,12 @@ async function fixture(t, mode) {
     child = new EventEmitter(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.exitCode = null; child.signalCode = null;
     const stage = args[args.indexOf('--paths') + 1];
     setTimeout(async () => {
-      if (mode === 'waiting') { child.stdout.write('PROGRESS: 15.5%\n'); return; }
+      if (mode === 'waiting') { child.stdout.write('PROGRESS:{"status":"downloading","downloaded_bytes":155,"total_bytes":1000}\n'); return; }
       if (mode === 'error') { child.stderr.write('connection timed out'); child.exitCode = 1; child.emit('close', 1); return; }
       const output = path.join(stage, 'Audio [abcdefghijk].mp3');
       await fs.writeFile(output, 'audio fixture');
-      child.stdout.write('PROGRESS: 50'); child.stdout.write('.0%\n');
+      child.stderr.write('PROGRESS:{"status":"downloading","downloaded_bytes":425,'); child.stderr.write('"total_bytes":1000}\n');
+      child.stdout.write('PROGRESS:{"status":"downloading","fragment_index":5,'); child.stdout.write('"fragment_count":10}\n');
       child.stdout.write('FILE:' + output + '\n'); child.exitCode = 0; child.emit('close', 0);
     }, 15);
     return child;
@@ -63,8 +64,20 @@ test('guarda MP3 sin sobrescribir y limpia temporales', async t => {
   assert.equal(await fs.readFile(path.join(dest, 'Audio [abcdefghijk] (1).mp3'), 'utf8'), 'audio fixture');
   assert.equal((await fs.readdir(dest)).length, 2);
   assert.ok(updates.some(update => update.progress === 50));
+  assert.ok(updates.some(update => update.progress === 42.5));
   assert.ok(updates.some(update => update.state === 'completed'));
   assert.equal(manager.active, null);
+});
+test('progreso por bytes, fragmentos y estimación; total desconocido no inventa porcentaje', () => {
+  const parse = data => parseProgress('PROGRESS:' + JSON.stringify(data));
+  assert.equal(parse({ status: 'downloading', downloaded_bytes: 250, total_bytes: 1000 }).progress, 25);
+  assert.equal(parse({ status: 'downloading', downloaded_bytes: 300, fragment_index: 3, fragment_count: 10 }).progress, 30);
+  assert.equal(parse({ status: 'downloading', downloaded_bytes: 400, total_bytes_estimate: 1000 }).progress, 40);
+  const unknown = parse({ status: 'downloading', downloaded_bytes: 1048576 });
+  assert.equal(unknown.progress, null); assert.match(unknown.message, /1\.0 MB/);
+  assert.equal(parse({ status: 'finished' }).progress, 99);
+  assert.match(parse({ status: 'downloading', downloaded_bytes: 1000, total_bytes_estimate: 1000 }).message, /Descargando/);
+  assert.equal(parseProgress('PROGRESS:not-json'), null);
 });
 test('cancelar detiene el proceso y elimina temporales', async t => {
   const { manager, dest, updates, getChild } = await fixture(t, 'waiting');

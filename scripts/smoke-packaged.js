@@ -41,6 +41,7 @@ async function main() {
       pending.set(requestId, { resolve: result => { clearTimeout(timer); resolve(result); }, reject: error => { clearTimeout(timer); reject(error); } });
       socket.send(JSON.stringify({ id: requestId, method, params }));
     });
+    await send('Runtime.evaluate', { expression: `new Promise(resolve => { const poll = setInterval(() => { if (document.readyState === 'complete' && document.querySelector('footer') && window.youtubeMP3) { clearInterval(poll); resolve(true); } }, 50); })`, awaitPromise: true, returnByValue: true });
     const result = await send('Runtime.evaluate', { expression: `(async () => ({ title: document.title, node: typeof require, destination: await window.youtubeMP3.getDestination(), invalid: await window.youtubeMP3.download('https://example.com'), footerVisible: document.querySelector('footer').getBoundingClientRect().bottom <= innerHeight }))()`, awaitPromise: true, returnByValue: true });
     const value = result.result.value;
     assert.equal(value.title, 'YouTube MP3'); assert.equal(value.node, 'undefined');
