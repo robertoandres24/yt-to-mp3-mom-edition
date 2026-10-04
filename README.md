@@ -127,7 +127,7 @@ El archivo `logs/download-errors.jsonl` está dentro de la carpeta de datos de u
 
 ## Versiones y actualizaciones en Windows
 
-La versión instalada con Setup busca actualizaciones al abrirse y las descarga desde los Releases públicos de `robertoandres24/yt-to-mp3`. Muestra **Actualizar y reiniciar** cuando están listas; no instala al cerrar y bloquea la instalación mientras hay una descarga de audio. El botón **Buscar actualizaciones** permite reintentar. Desarrollo, macOS y Portable no usan este mecanismo. Los fallos de actualización se guardan en el registro local.
+La versión instalada con Setup busca actualizaciones al abrirse y las descarga desde los Releases públicos de `robertoandres24/yt-to-mp3-mom-edition`. Muestra **Actualizar y reiniciar** cuando están listas; no instala al cerrar y bloquea la instalación mientras hay una descarga de audio. El botón **Buscar actualizaciones** permite reintentar. Desarrollo, macOS y Portable no usan este mecanismo. Los fallos de actualización se guardan en el registro local.
 
 Para publicar la primera versión con este mecanismo:
 
