@@ -4,10 +4,17 @@ let busy = false;
 let lastProgress = 0;
 function setBusy(value) {
   busy = value;
-  ['url', 'download', 'choose', 'open'].forEach(id => { $(id).disabled = value; });
+  ['url', 'clear-url', 'download', 'choose', 'open'].forEach(id => { $(id).disabled = value; });
   $('cancel').hidden = !value;
   $('cancel').disabled = false;
 }
+$('url').addEventListener('input', () => { $('clear-url').hidden = $('url').value.length === 0; });
+$('clear-url').addEventListener('click', () => {
+  if (busy) return;
+  $('url').value = '';
+  $('clear-url').hidden = true;
+  $('url').focus();
+});
 function showError(message) { $('message').textContent = message; $('message').classList.add('error'); }
 function showProgress(value) {
   const known = Number.isFinite(value);
@@ -30,7 +37,12 @@ api.onUpdate(update => {
   if (update.state === 'downloading') {
     showProgress(update.progress);
   }
-  if (update.state === 'completed') { showProgress(100); $('filename').textContent = update.filename; }
+  if (update.state === 'completed') {
+    showProgress(100);
+    $('filename').textContent = update.filename;
+    $('url').value = '';
+    $('clear-url').hidden = true;
+  }
   if (['error', 'cancelled'].includes(update.state)) $('progress-container').hidden = true;
 });
 $('form').addEventListener('submit', async event => {
