@@ -13,6 +13,8 @@ Puedes cancelar. Solo se permite una descarga a la vez. Cerrar la aplicación du
 
 Durante **Preparando el video…** no se muestra un porcentaje, porque YouTube todavía no ha entregado el audio. La barra refleja los bytes descargados o los fragmentos completados cuando comienza la transferencia; si el total no está disponible, se muestra la cantidad descargada en MB. Los porcentajes no retroceden cuando cambia una estimación. Durante la conversión se mantiene en 99% y llega a 100% al guardar el MP3. Con videos pequeños o conexiones rápidas, la preparación puede durar más que la descarga y el porcentaje avanzar muy rápido.
 
+El audio se guarda como **MP3 a 192 kbps**, aproximadamente **1,44 MB por minuto** (5,8 MB para 4 minutos). Se descarga la mejor pista disponible y se convierte una sola vez. Esto reemplaza la calidad variable máxima anterior, que producía archivos mayores sin recuperar información perdida en la fuente. Los archivos ya descargados no se modifican.
+
 ## Desarrollo
 
 Requisitos del **desarrollador**: Node.js 24 LTS, npm y acceso a npm/GitHub para descargar dependencias y binarios. El usuario final no instala Node, Python, yt-dlp, FFmpeg ni Deno.
@@ -57,6 +59,7 @@ dist/
 ```text
 resources/bin/win/
   yt-dlp.exe
+  _internal/                 # runtime de yt-dlp, también obligatorio
   ffmpeg.exe
   ffprobe.exe
   deno.exe
@@ -103,6 +106,12 @@ Las descargas se preparan dentro de una subcarpeta temporal del destino, luego s
 ## Binarios y mantenimiento
 
 `scripts/binary-manifest.json` fija las URLs/versiones y los SHA-256. Los scripts verifican las descargas y los archivos existentes antes de reutilizarlos. Los checksums iniciales de assets antiguos que no publican digest se fijan desde una primera descarga HTTPS del proveedor; no constituyen una firma del editor. Los binarios y `dist` no se suben a Git; el lockfile de npm sí debe conservarse.
+
+Se usa la distribución oficial **onedir** de yt-dlp (`yt-dlp_macos.zip` / `yt-dlp_win.zip`), preparada durante el build. El ejecutable y `_internal/` se incluyen juntos mediante `extraResources`, evitando descomprimir el runtime en cada descarga. El instalador resulta mayor, pero el usuario no instala Python. Se verifica cada archivo del runtime al reutilizarlo en un build y se rechazan enlaces y rutas que escapen del ZIP.
+
+La app permite una caché local de yt-dlp dentro de su carpeta de datos de usuario (`yt-dlp-cache`), para reutilizar información del reproductor cuando la herramienta lo admita. No se almacenan ahí los MP3 ni se requieren cookies. La primera ejecución puede tardar más por las comprobaciones de macOS; las consultas a YouTube también dependen de la conexión.
+
+Medición en el Mac de desarrollo con el video `sal78l1W6fE`: el ejecutable anterior demoró 13,4–15,1 s solo en arrancar; el nuevo, 0,19 s después de su primera ejecución. La preparación completa fue 1,47 s y el proceso total 4,06 s. Sobre el mismo audio de 303 segundos, el MP3 bajó de 10,14 MB (calidad variable 0) a 7,27 MB (192 kbps), aproximadamente un 28% menos. Son mediciones de esa prueba, no una garantía para todos los videos o equipos.
 
 Se incluye Deno porque el soporte actual de YouTube en yt-dlp necesita resolver desafíos JavaScript. Los ejecutables oficiales de yt-dlp ya incluyen los scripts EJS: no se habilita descarga de componentes remotos durante el uso. Referencia: https://github.com/yt-dlp/yt-dlp/wiki/EJS
 

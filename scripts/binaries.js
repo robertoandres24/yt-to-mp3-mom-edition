@@ -7,6 +7,7 @@ const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 const { createWriteStream, createReadStream } = require('node:fs');
 const yauzl = require('yauzl');
+const { extractBundle } = require('./extract-bundle');
 const manifest = require('./binary-manifest.json');
 const platform = process.argv[2];
 const target = platform === 'win' ? 'win' : `mac-${process.argv[3] || process.arch}`;
@@ -58,7 +59,15 @@ async function main() {
       // Both original archives and final executables are checked on repeat builds.
       if (entry.sha256 && previous[entry.name]?.source === entry.sha256) {
         try {
-          if (await hash(output) === previous[entry.name].sha256) { integrity[entry.name] = previous[entry.name]; continue; }
+          let valid = await hash(output) === previous[entry.name].sha256;
+          if (entry.bundleExecutable) {
+            const files = previous[entry.name].files;
+            valid = valid && files && Object.keys(files).length > 0;
+            if (valid) for (const [name, digest] of Object.entries(files)) {
+              if (await hash(path.join(root, name)) !== digest) { valid = false; break; }
+            }
+          }
+          if (valid) { integrity[entry.name] = previous[entry.name]; continue; }
         } catch {}
       }
       console.log(`Preparando ${target}/${entry.name}…`);
@@ -67,11 +76,20 @@ async function main() {
       const digest = await hash(fetched);
       if (entry.sha256 && digest !== entry.sha256) throw new Error(`Checksum incorrecto: ${entry.name}`);
       if (!entry.sha256) entry.sha256 = digest;
-      if (entry.archive) {
+      let bundledFiles;
+      if (entry.bundleExecutable) {
+        const staging = path.join(cache, 'bundle');
+        const files = await extractBundle(fetched, staging, entry.bundleExecutable);
+        await fs.rm(path.join(root, '_internal'), { recursive: true, force: true });
+        await fs.cp(path.join(staging, '_internal'), path.join(root, '_internal'), { recursive: true });
+        await fs.copyFile(path.join(staging, entry.bundleExecutable), output);
+        bundledFiles = {};
+        for (const name of files.filter(name => name !== entry.bundleExecutable)) bundledFiles[name] = await hash(path.join(root, name));
+      } else if (entry.archive) {
         await extractBinary(fetched, entry.name, output);
       } else await fs.copyFile(fetched, output);
       if (!entry.name.endsWith('.txt') && target !== 'win') await fs.chmod(output, 0o755);
-      integrity[entry.name] = { source: digest, sha256: await hash(output), url: entry.url };
+      integrity[entry.name] = { source: digest, sha256: await hash(output), url: entry.url, ...(bundledFiles ? { files: bundledFiles } : {}) };
     }
     await fs.writeFile(integrityFile, JSON.stringify(integrity, null, 2) + '\n');
     await fs.writeFile(path.join(__dirname, 'binary-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');

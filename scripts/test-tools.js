@@ -57,6 +57,7 @@ async function main() {
       assert.ok(completed, JSON.stringify(updates));
       const { stdout: metadata } = await exec(path.join(bin, 'ffprobe' + ext), ['-v', 'quiet', '-show_streams', '-of', 'json', path.join(output, completed.filename)], { timeout: 10000 });
       assert.equal(JSON.parse(metadata).streams[0].codec_name, 'mp3');
+      assert.equal(Number(JSON.parse(metadata).streams[0].bit_rate), 192000, 'El MP3 debe respetar el tamaño predecible de 192 kbps');
       console.log(`PROGRESS OK (${file}): ${distinct.size} porcentajes intermedios recibidos en vivo; MP3 verificado.`);
     }
     const { stdout: denoVersion } = await exec(path.join(bin, 'deno' + ext), ['--version'], { timeout: 10000 });

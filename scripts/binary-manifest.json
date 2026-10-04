@@ -2,9 +2,10 @@
   "mac-arm64": [
     {
       "name": "yt-dlp",
-      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_macos",
-      "sha256": "0f192b7ec147ab6288885d6351d9ab67367640029b4377576ef46dd79cf7b202",
-      "archive": false
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_macos.zip",
+      "sha256": "07e54b0865303c864006925913bce2604f8ee8cc6f18699bac9c309f9328a6d8",
+      "archive": true,
+      "bundleExecutable": "yt-dlp_macos"
     },
     {
       "name": "ffmpeg",
@@ -40,9 +41,10 @@
   "mac-x64": [
     {
       "name": "yt-dlp",
-      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_macos",
-      "sha256": "0f192b7ec147ab6288885d6351d9ab67367640029b4377576ef46dd79cf7b202",
-      "archive": false
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_macos.zip",
+      "sha256": "07e54b0865303c864006925913bce2604f8ee8cc6f18699bac9c309f9328a6d8",
+      "archive": true,
+      "bundleExecutable": "yt-dlp_macos"
     },
     {
       "name": "ffmpeg",
@@ -78,9 +80,10 @@
   "win": [
     {
       "name": "yt-dlp.exe",
-      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe",
-      "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a",
-      "archive": false
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_win.zip",
+      "sha256": "30b4c14aafab6082becff7881e41b76df46dc43ea7633479410a91e29da492bf",
+      "archive": true,
+      "bundleExecutable": "yt-dlp.exe"
     },
     {
       "name": "ffmpeg.exe",

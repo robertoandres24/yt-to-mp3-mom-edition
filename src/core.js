@@ -29,13 +29,14 @@ function friendlyError(detail) {
   return 'No se pudo descargar el audio. Prueba con otro video o elige otra carpeta.';
 }
 
-function makeArgs(url, stage, bin) {
+function makeArgs(url, stage, bin, { cacheDir } = {}) {
   const suffix = process.platform === 'win32' ? '.exe' : '';
   return ['--ignore-config', '--no-playlist', '--no-live-from-start', '--match-filter', '!is_live',
-    '--no-colors', '--newline', '--progress', '--progress-delta', '0.1', '--downloader', 'native', '--no-cache-dir', '--socket-timeout', '20', '--retries', '3',
+    '--no-colors', '--newline', '--progress', '--progress-delta', '0.1', '--downloader', 'native',
+    ...(cacheDir ? ['--cache-dir', cacheDir] : ['--no-cache-dir']), '--socket-timeout', '20', '--retries', '3',
     '--no-overwrites', '--windows-filenames', '--trim-filenames', '160',
     '--ffmpeg-location', bin, '--js-runtimes', `deno:${path.join(bin, `deno${suffix}`)}`,
-    '-f', 'bestaudio/best', '-x', '--audio-format', 'mp3', '--audio-quality', '0',
+    '-f', 'bestaudio/best', '-x', '--audio-format', 'mp3', '--audio-quality', '192K',
     '--paths', stage, '-o', '%(title).140B [%(id)s].%(ext)s',
     '--progress-template', 'download:PROGRESS:%(progress)j',
     '--print', 'after_move:FILE:%(filepath)s', '--', url];
@@ -71,8 +72,8 @@ async function killTree(child, platform = process.platform) {
 }
 
 class DownloadManager {
-  constructor({ bin, emit, spawnProcess = spawn, killProcess = killTree }) {
-    this.bin = bin; this.emit = emit; this.spawnProcess = spawnProcess; this.killProcess = killProcess; this.active = null;
+  constructor({ bin, emit, cacheDir, spawnProcess = spawn, killProcess = killTree }) {
+    this.bin = bin; this.emit = emit; this.cacheDir = cacheDir; this.spawnProcess = spawnProcess; this.killProcess = killProcess; this.active = null;
   }
   async start(input, destination) {
     if (this.active) throw new Error('Ya hay una descarga en curso. Espera o cancélala.');
@@ -94,7 +95,7 @@ class DownloadManager {
       for (const name of ['yt-dlp', 'ffmpeg', 'ffprobe', 'deno']) await fs.access(path.join(this.bin, name + suffix));
       if (job.cancelled) return;
       this.emit({ state: 'downloading', progress: null, message: 'Preparando el video…' });
-      const child = this.spawnProcess(path.join(this.bin, 'yt-dlp' + suffix), makeArgs(url, job.stage, this.bin), {
+      const child = this.spawnProcess(path.join(this.bin, 'yt-dlp' + suffix), makeArgs(url, job.stage, this.bin, { cacheDir: this.cacheDir }), {
         shell: false, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'],
         env: { ...process.env, PYTHONUNBUFFERED: '1' }
       });
