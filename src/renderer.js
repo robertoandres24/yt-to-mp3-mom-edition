@@ -5,6 +5,7 @@ let lastProgress = 0;
 function setBusy(value) {
   busy = value;
   ['url', 'clear-url', 'download', 'choose', 'open'].forEach(id => { $(id).disabled = value; });
+  $('install-update').disabled = value;
   $('cancel').hidden = !value;
   $('cancel').disabled = false;
 }
@@ -79,4 +80,25 @@ refreshDestination();
 $('open-logs').addEventListener('click', async () => {
   try { const result = await api.openErrorLogs(); if (!result.ok) showError(result.error); }
   catch { showError('No se pudo abrir la carpeta de registros.'); }
+});
+
+function showUpdateStatus(status) {
+  $('updates').hidden = status.state === 'disabled';
+  $('update-message').textContent = status.message;
+  $('install-update').hidden = status.state !== 'ready';
+  $('install-update').disabled = busy;
+  $('check-updates').disabled = ['checking', 'downloading', 'ready', 'installing'].includes(status.state);
+}
+api.onUpdateStatus(showUpdateStatus);
+api.getUpdateStatus().then(status => {
+  $('app-version').textContent = `Versión ${status.version} · `;
+  showUpdateStatus(status);
+}).catch(() => {});
+$('check-updates').addEventListener('click', async () => {
+  try { showUpdateStatus(await api.checkUpdates()); }
+  catch { $('update-message').textContent = 'No se pudo buscar una actualización. Intenta nuevamente.'; }
+});
+$('install-update').addEventListener('click', async () => {
+  try { const result = await api.installUpdate(); if (!result.ok) $('update-message').textContent = result.error; }
+  catch { $('update-message').textContent = 'No se pudo instalar la actualización. Intenta nuevamente.'; }
 });

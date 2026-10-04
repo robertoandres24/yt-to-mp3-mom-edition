@@ -3,11 +3,13 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { DownloadManager, friendlyError } = require('./core');
 const { writeErrorLog } = require('./error-log');
+const { createUpdates } = require('./updates');
 const { defaultDestination } = require('./destination');
 
 // Preserve existing settings, cache and logs when changing the product name.
 app.setPath('userData', path.join(app.getPath('appData'), 'youtube-mp3'));
 
+let updates;
 let window, manager, destination, userSelected = false, closing = false;
 const rendererPath = path.join(__dirname, 'index.html');
 const rendererUrl = pathToFileURL(rendererPath).href;
@@ -23,6 +25,16 @@ else {
       if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== rendererUrl) return { ok: false, error: 'Solicitud no permitida.' };
       try { return await fn(...args); } catch (error) { return { ok: false, error: error.code ? friendlyError(`${error.code} ${error.message}`) : error.message }; }
     });
+    updates = createUpdates({
+      enabled: app.isPackaged && process.platform === 'win32' && !process.env.PORTABLE_EXECUTABLE_FILE,
+      updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null,
+      isBusy: () => Boolean(manager.active),
+      emit: status => { if (window && !window.isDestroyed()) window.webContents.send('updates:status', status); },
+      logError: diagnostic => writeErrorLog(errorLog, diagnostic)
+    });
+    handle('updates:get', () => ({ ...updates.status(), version: app.getVersion() }));
+    handle('updates:check', () => updates.check());
+    handle('updates:install', () => updates.install());
     handle('destination:get', async () => {
       if (!userSelected && !manager.active) destination = await defaultDestination(app.getPath('downloads'));
       return { ok: true, ...destination };
@@ -34,6 +46,7 @@ else {
       return { ok: true, ...destination };
     });
     handle('download:start', async url => {
+      if (updates.isInstalling()) return { ok: false, error: 'Espera a que termine la actualización.' };
       if (!userSelected && !manager.active) destination = await defaultDestination(app.getPath('downloads'));
       const result = await manager.start(url, destination.path);
       return { ...result, destination: destination.path };
@@ -48,6 +61,7 @@ else {
       return error ? { ok: false, error: 'No se pudo abrir la carpeta. Revisa que el pendrive siga conectado.' } : { ok: true };
     });
     createWindow();
+    window.webContents.once('did-finish-load', () => { void updates.check(); });
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   }).catch(error => { console.error(error); dialog.showErrorBox('MP3 para mamá ❤️', 'No se pudo iniciar la aplicación. Intenta abrirla nuevamente.'); app.quit(); });
 }

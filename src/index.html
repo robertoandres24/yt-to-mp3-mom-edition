@@ -48,7 +48,12 @@
       <button id="cancel" type="button" class="secondary" hidden>Cancelar descarga</button>
       <button id="open" type="button" class="secondary" disabled>Abrir carpeta</button>
     </div>
-    <footer>Utiliza esta aplicación solo con contenido que tengas derecho a descargar.</footer>
+    <section id="updates" hidden aria-live="polite">
+      <p id="update-message"></p>
+      <button id="check-updates" type="button" class="secondary">Buscar actualizaciones</button>
+      <button id="install-update" type="button" class="primary" hidden>Actualizar y reiniciar</button>
+    </section>
+    <footer><span id="app-version"></span>Utiliza esta aplicación solo con contenido que tengas derecho a descargar.</footer>
   </main>
   <script src="renderer.js"></script>
 </body>

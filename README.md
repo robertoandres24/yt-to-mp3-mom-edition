@@ -124,3 +124,20 @@ Consulta `THIRD-PARTY-NOTICES.md` y los archivos LICENSE/README de los binarios 
 Los fallos distinguen preparación del destino, herramientas de la app, descarga, conversión y guardado. **Ver detalle del error** muestra la etapa, código y salida técnica; **Abrir registros** abre la carpeta de diagnóstico local. Se guardan fecha, versión de la app, plataforma, enlace normalizado del video, destino, etapa, código de salida y los últimos 12.000 caracteres de cada salida de yt-dlp. Los registros no se envían a ningún servidor; pueden contener rutas personales y enlaces de videos.
 
 El archivo `logs/download-errors.jsonl` está dentro de la carpeta de datos de usuario de Electron. Rota al alcanzar 1 MB y conserva un archivo anterior. Si no puede escribirse, el detalle sigue disponible en pantalla. Cancelar una descarga no se registra como fallo.
+
+## Versiones y actualizaciones en Windows
+
+La versión instalada con Setup busca actualizaciones al abrirse y las descarga desde los Releases públicos de `robertoandres24/yt-to-mp3`. Muestra **Actualizar y reiniciar** cuando están listas; no instala al cerrar y bloquea la instalación mientras hay una descarga de audio. El botón **Buscar actualizaciones** permite reintentar. Desarrollo, macOS y Portable no usan este mecanismo. Los fallos de actualización se guardan en el registro local.
+
+Para publicar la primera versión con este mecanismo:
+
+1. Sube estos cambios, incluidos `package-lock.json` y los workflows.
+2. Crea y sube el tag correspondiente a `package.json`: para esta versión, `git tag v1.1.0` y `git push origin v1.1.0`.
+3. Revisa **Actions → Windows release**. Compila y sube a un **borrador** de Release el Setup, Portable, `latest.yml` y los archivos de actualización necesarios.
+4. Descarga el Setup desde el borrador y comprueba instalación y descarga de audio en Windows.
+5. En GitHub **Releases**, abre el borrador y pulsa **Publish release**. Conserva todos sus archivos, incluido `latest.yml`.
+6. Instala manualmente el Setup 1.1.0 una vez en el equipo de tu mamá. Después usa siempre la app instalada.
+
+Para futuras versiones, incrementa `version` en `package.json` y en el lockfile (`npm version patch --no-git-tag-version`), sube los cambios y crea el nuevo tag (por ejemplo `v1.1.1`). Repite la revisión y publicación del borrador. Prueba la actualización de 1.1.0 a una versión superior en Windows antes de considerar verificado el flujo completo. La compilación manual **Windows installer** solo guarda artefactos en Actions y no publica una versión.
+
+El proyecto sigue sin firma de Windows; puede aparecer un aviso de editor desconocido durante la instalación. La actualización de la app incluye los binarios fijados en el manifiesto: para actualizar yt-dlp también hay que actualizar ese manifiesto antes de compilar.
