@@ -5,7 +5,7 @@ const path = require('node:path');
 const os = require('node:os');
 const assert = require('node:assert/strict');
 async function main() {
-  const executable = process.argv[2] || path.resolve('dist', `mac-${process.arch}`, 'YouTube MP3.app', 'Contents', 'MacOS', 'YouTube MP3');
+  const executable = process.argv[2] || path.resolve('dist', `mac-${process.arch}`, 'MP3 para mamá.app', 'Contents', 'MacOS', 'MP3 para mamá');
   await fs.access(executable);
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'yt-mp3-packaged-'));
   const reserve = http.createServer();
@@ -44,7 +44,7 @@ async function main() {
     await send('Runtime.evaluate', { expression: `new Promise(resolve => { const poll = setInterval(() => { if (document.readyState === 'complete' && document.querySelector('footer') && window.youtubeMP3) { clearInterval(poll); resolve(true); } }, 50); })`, awaitPromise: true, returnByValue: true });
     const result = await send('Runtime.evaluate', { expression: `(async () => ({ title: document.title, node: typeof require, destination: await window.youtubeMP3.getDestination(), invalid: await window.youtubeMP3.download('https://example.com'), footerVisible: document.querySelector('footer').getBoundingClientRect().bottom <= innerHeight }))()`, awaitPromise: true, returnByValue: true });
     const value = result.result.value;
-    assert.equal(value.title, 'YouTube MP3'); assert.equal(value.node, 'undefined');
+    assert.equal(value.title, 'MP3 para mamá ❤️'); assert.equal(value.node, 'undefined');
     assert.equal(value.destination.ok, true); assert.equal(value.invalid.ok, false); assert.equal(value.footerVisible, true);
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     const output = path.join(os.tmpdir(), 'youtube-mp3-packaged.png');

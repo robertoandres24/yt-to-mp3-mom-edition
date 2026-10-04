@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "local.youtube.mp3",
-    "productName": "YouTube MP3",
+    "productName": "MP3 para mamá",
     "asar": true,
     "directories": {
       "output": "dist"
@@ -53,12 +53,12 @@
       ]
     },
     "nsis": {
-      "artifactName": "YouTube MP3 Setup.exe",
+      "artifactName": "MP3 para mamá Setup.exe",
       "oneClick": true,
       "perMachine": false
     },
     "portable": {
-      "artifactName": "YouTube MP3 Portable.exe"
+      "artifactName": "MP3 para mamá Portable.exe"
     },
     "mac": {
       "target": [
@@ -67,7 +67,7 @@
       ],
       "category": "public.app-category.music",
       "identity": null,
-      "artifactName": "YouTube MP3-${arch}.${ext}",
+      "artifactName": "MP3 para mamá-${arch}.${ext}",
       "extraResources": [
         {
           "from": "resources/bin/mac-${arch}",

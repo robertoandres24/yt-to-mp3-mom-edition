@@ -12,7 +12,7 @@ module.exports = async function smoke(window, app) {
       destination: await window.youtubeMP3.getDestination(),
       invalid: await window.youtubeMP3.download('https://example.com/evil')
     }))()`);
-    assert.equal(result.title, 'YouTube MP3');
+    assert.equal(result.title, 'MP3 para mamá ❤️');
     assert.equal(result.node, 'undefined'); assert.equal(result.api, 'object');
     assert.equal(result.destination.ok, true); assert.equal(result.invalid.ok, false);
     window.webContents.send('download:update', { state: 'downloading', progress: null, message: 'Preparando el video…' });

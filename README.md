@@ -1,10 +1,10 @@
-# YouTube MP3
+# MP3 para mamá
 
 Aplicación de escritorio sencilla para guardar el audio de **un video de YouTube** como MP3. Todo se procesa en el equipo. No tiene backend remoto, hosting, cuentas, suscripciones ni costos de operación. Requiere internet para acceder a YouTube. Utilízala solo con contenido que tengas derecho a descargar.
 
 ## Uso
 
-1. Abre YouTube MP3 y pega el enlace del video.
+1. Abre MP3 para mamá y pega el enlace del video.
 2. Revisa el destino: un pendrive USB montado y escribible tiene prioridad; si no hay ninguno, se usa **Descargas**. Con varios USB se elige el primero por orden de ruta. Puedes elegir otro con **Cambiar**.
 3. Pulsa **Descargar MP3**. Espera la descarga y conversión.
 4. Al ver **Descarga terminada**, pulsa **Abrir carpeta**.
@@ -50,8 +50,8 @@ Genera:
 
 ```text
 dist/
-  YouTube MP3 Setup.exe
-  YouTube MP3 Portable.exe
+  MP3 para mamá Setup.exe
+  MP3 para mamá Portable.exe
 ```
 
 `electron-builder` incluye mediante `extraResources`:
@@ -80,9 +80,9 @@ npm run build:mac:intel       # Mac Intel: .dmg y .zip
 Salida Apple Silicon:
 
 ```text
-dist/YouTube MP3-arm64.dmg
-dist/YouTube MP3-arm64.zip
-dist/mac-arm64/YouTube MP3.app
+dist/MP3 para mamá-arm64.dmg
+dist/MP3 para mamá-arm64.zip
+dist/mac-arm64/MP3 para mamá.app
 ```
 
 Abre el DMG y arrastra la aplicación a **Aplicaciones**. El ZIP contiene la app lista para copiar. Para probar directamente también puedes abrir la `.app` de `dist/mac-arm64/`.

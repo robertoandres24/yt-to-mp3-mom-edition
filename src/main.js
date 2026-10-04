@@ -5,6 +5,9 @@ const { DownloadManager, friendlyError } = require('./core');
 const { writeErrorLog } = require('./error-log');
 const { defaultDestination } = require('./destination');
 
+// Preserve existing settings, cache and logs when changing the product name.
+app.setPath('userData', path.join(app.getPath('appData'), 'youtube-mp3'));
+
 let window, manager, destination, userSelected = false, closing = false;
 const rendererPath = path.join(__dirname, 'index.html');
 const rendererUrl = pathToFileURL(rendererPath).href;
@@ -46,11 +49,11 @@ else {
     });
     createWindow();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
-  }).catch(error => { console.error(error); dialog.showErrorBox('YouTube MP3', 'No se pudo iniciar la aplicación. Intenta abrirla nuevamente.'); app.quit(); });
+  }).catch(error => { console.error(error); dialog.showErrorBox('MP3 para mamá ❤️', 'No se pudo iniciar la aplicación. Intenta abrirla nuevamente.'); app.quit(); });
 }
 
 function createWindow() {
-  window = new BrowserWindow({ width: 620, height: 700, minWidth: 520, minHeight: 660, title: 'YouTube MP3', backgroundColor: '#f5f5f3', autoHideMenuBar: true,
+  window = new BrowserWindow({ width: 620, height: 700, minWidth: 520, minHeight: 660, title: 'MP3 para mamá ❤️', backgroundColor: '#f5f5f3', autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
   window.setMenu(null);
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
