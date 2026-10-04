@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -25,10 +29,9 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - name: Build and upload draft release
-        run: npm run build:win -- --publish always
+      - name: Build Windows release files
+        run: npm run build:win -- --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - uses: actions/upload-artifact@v4
         with:
@@ -38,3 +41,29 @@ jobs:
             dist/*.blockmap
             dist/latest.yml
           if-no-files-found: error
+      - name: Upload files to one draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $version = node -p "require('./package.json').version"
+          $required = @(
+            "dist/MP3-para-mama-Setup-$version.exe",
+            "dist/MP3-para-mama-Setup-$version.exe.blockmap",
+            "dist/MP3-para-mama-Portable-$version.exe",
+            "dist/latest.yml"
+          )
+          foreach ($file in $required) {
+            if (!(Test-Path $file)) { throw "Missing release file: $file" }
+          }
+          $draft = gh release view $tag --json isDraft --jq '.isDraft' 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --verify-tag --draft --title $version --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw "Could not create draft release" }
+          } elseif ($draft -ne 'true') {
+            throw "Release is already published; create a new version instead"
+          }
+          gh release upload $tag @required --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Could not upload release files" }
