@@ -1,0 +1,82 @@
+{
+  "name": "youtube-mp3",
+  "version": "1.0.0",
+  "description": "Descarga audio autorizado de YouTube como MP3, localmente.",
+  "author": "YouTube MP3",
+  "license": "MIT",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "test": "node --test test/*.test.js",
+    "test:smoke": "node scripts/start.js --smoke-test",
+    "test:tools": "node scripts/test-tools.js",
+    "test:packaged": "node scripts/smoke-packaged.js",
+    "check": "node scripts/check.js",
+    "binaries:mac": "node scripts/binaries.js mac",
+    "binaries:win": "node scripts/binaries.js win",
+    "build:mac": "npm run binaries:mac && npm run check && electron-builder --mac --arm64",
+    "build:mac:intel": "node scripts/binaries.js mac x64 && npm run check && electron-builder --mac --x64",
+    "build:win": "npm run binaries:win && npm run check && electron-builder --win --x64"
+  },
+  "dependencies": {
+    "plist": "3.1.0"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "yauzl": "3.4.0"
+  },
+  "build": {
+    "appId": "local.youtube.mp3",
+    "productName": "YouTube MP3",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "extraResources": [
+        {
+          "from": "resources/bin/win",
+          "to": "bin",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "YouTube MP3 Setup.exe",
+      "oneClick": true,
+      "perMachine": false
+    },
+    "portable": {
+      "artifactName": "YouTube MP3 Portable.exe"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.music",
+      "identity": null,
+      "artifactName": "YouTube MP3-${arch}.${ext}",
+      "extraResources": [
+        {
+          "from": "resources/bin/mac-${arch}",
+          "to": "bin",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    }
+  }
+}
